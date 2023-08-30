@@ -5,7 +5,7 @@ struct TASKCTL *taskctl;
 struct TIMER *task_timer;
 
 //定义任务栈
-#define TASK1_STACK_SIZE                    0x400
+#define TASK1_STACK_SIZE                    0x580
 uint32_t Task1Stack[TASK1_STACK_SIZE];
 
 #define TASK2_STACK_SIZE                    80
@@ -81,7 +81,7 @@ void Task2_Entry( void *p_arg )
 	for( ;; )
 	{	
 		printf("task2\n");
-		delay(0xfffff);
+		delay(0x2fffff);
 		LED2_TOGGLE;
 	}
 }

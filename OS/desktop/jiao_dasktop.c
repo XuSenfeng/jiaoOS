@@ -258,7 +258,8 @@ void buf_fill8(uint8_t *buf, int xsize, uint8_t c, int x0, int y0, int x1, int y
   * @param  字的颜色
   * @param  字符串的指针
   * @retval None
-  */void putfonts8_asc(uint8_t * buf,int xsize,uint16_t x,uint16_t y, uint16_t color,char * title)
+  */
+void putfonts8_asc(uint8_t * buf,int xsize,uint16_t x,uint16_t y, uint16_t color,char * title)
 {
 	//取字模数据 
 	uint8_t ucBuffer [ WIDTH_CH_CHAR*HEIGHT_CH_CHAR/8 ];	
@@ -289,10 +290,6 @@ void buf_fill8(uint8_t *buf, int xsize, uint8_t c, int x0, int y0, int x1, int y
 		title+=2;
 	}
 }
-
-
-
-
 
 
 
@@ -344,7 +341,31 @@ void make_window8(uint8_t *buf, int xsize, int ysize, char *title)
 	}
 	return;
 }
-
+/**
+  * @brief  在某一个图层上面绘制文本框
+  * @param  图层
+  * @param  绘制的位置
+  * @param  绘制的长
+  * @param  绘制的宽
+  * @param  背景颜色
+  * @retval None
+  */
+//	make_window8(buf_win, 160, 52, "window");
+//	make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
+void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
+{
+	int x1 = x0 + sx, y1 = y0 + sy;
+	buf_fill8(sht->buf, sht->bxsize, COL8_848484, x0 - 2, y0 - 3, x1 + 1, y0 - 3);
+	buf_fill8(sht->buf, sht->bxsize, COL8_848484, x0 - 3, y0 - 3, x0 - 3, y1 + 1);
+	buf_fill8(sht->buf, sht->bxsize, COL8_FFFFFF, x0 - 3, y1 + 2, x1 + 1, y1 + 2);
+	buf_fill8(sht->buf, sht->bxsize, COL8_FFFFFF, x1 + 2, y0 - 3, x1 + 2, y1 + 2);
+	buf_fill8(sht->buf, sht->bxsize, COL8_000000, x0 - 1, y0 - 2, x1 + 0, y0 - 2);
+	buf_fill8(sht->buf, sht->bxsize, COL8_000000, x0 - 2, y0 - 2, x0 - 2, y1 + 0);
+	buf_fill8(sht->buf, sht->bxsize, COL8_C6C6C6, x0 - 2, y1 + 1, x1 + 0, y1 + 1);
+	buf_fill8(sht->buf, sht->bxsize, COL8_C6C6C6, x1 + 1, y0 - 2, x1 + 1, y1 + 1);
+	buf_fill8(sht->buf, sht->bxsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
+	return;
+}
 #if Jiao_Debug
 /**
   * @brief  测试函数可以修改这个宏进行设置是否进行测试

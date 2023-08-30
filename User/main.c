@@ -15,17 +15,18 @@ int main()
 	printf("**********************************\n\n");
 	test();
 #endif
-	
+
+#if USE_OF_MOUSE
+	//使用桌面模式并且选择绘制鼠标
+	Draw_Mouse(160, 120);
+#endif	
 #if USE_TASK_MODE
 	//使用任务模式
 	Task_main();
 	
 #endif
 	
-#if USE_OF_MOUSE
-	//使用桌面模式并且选择绘制鼠标
-	Draw_Mouse(160, 120);
-#endif
+
 
 #if USE_DASKTOP_MODE
 	//使用桌面模式,对各种事件进行检查

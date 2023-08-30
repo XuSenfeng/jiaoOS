@@ -19,7 +19,7 @@
 extern struct Event_Flog EventFlog;
 extern struct SHEET * Mouse_sht, * Windoes_sht;
 extern Mouse_Message_Def Mouse_def;
-
+extern struct SHTCTL ctl;
 /**
   * @brief  配置按键中断函数的优先级
   * @param  无
@@ -99,6 +99,14 @@ void Key_TouchEventHandler(int i)
 			//KAY1按下,在这里设置处理
 			
 			printf("Key1 down\n");
+			if((Mouse_def.x>=Windoes_sht->vx0+Windoes_sht->bxsize-18) &
+				(Mouse_def.x<=Windoes_sht->vx0+Windoes_sht->bxsize) &
+				(Mouse_def.y>=Windoes_sht->vy0) &
+				(Mouse_def.y<=Windoes_sht->vy0+18))
+			{
+				printf("图层操作\n");
+				sheet_updown(&ctl, Windoes_sht, -1);
+			}
 		}
 		if(i==KEY1_UP)
 		{

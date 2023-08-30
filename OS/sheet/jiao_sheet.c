@@ -3,10 +3,10 @@
 
 #define SHEET_USE		1
 //图层控制结构体
-struct SHTCTL ctl;
 struct SHEET * Mouse_sht, * Windoes_sht;
 extern Mouse_Message_Def Mouse_def;
 extern uint8_t buf_win[120*52];
+struct SHTCTL ctl;
 
 /**
   * @brief  初始化图层控制结构体
@@ -69,7 +69,7 @@ void sheet_setbuf(struct SHEET *sht, uint8_t *buf, int xsize, int ysize, int col
 void sheet_refreshsub(int vx0, int vy0, int vx1, int vy1)
 {
 	int h, bx, by, bx0, by0, bx1, by1, vy, vx;
-	uint16_t width, high, c;
+	uint16_t width, high, c, width_x, high_x, i, j;
 	struct SHEET *sht;
 	uint16_t *temp_buf;
 	uint8_t  *buf;
@@ -82,47 +82,64 @@ void sheet_refreshsub(int vx0, int vy0, int vx1, int vy1)
 	//设置一个临时的图层
 	width =vx1-vx0;
 	high = vy1-vy0;
-	temp_buf = malloc(width * high *2);
-	if(temp_buf != NULL)
+	if((width*high) > (16*16+1))
 	{
-		Get_Dasktop_Part(temp_buf, vx0, vy0, width, high);
-		for (h = 0; h <= ctl.top; h++) {
-			//遍历所有的图层
-			sht = ctl.sheets[h];
-			//获得图层信息
-			buf = sht->buf;
-			/* 获取临时图层更新位置相对于图层的位置 */
-			bx0 = vx0 - sht->vx0;
-			by0 = vy0 - sht->vy0;
-			bx1 = vx1 - sht->vx0;
-			by1 = vy1 - sht->vy0;	
-			printf("bx0 = %d %d", bx0, vx0);
-			//算出来相对位置是负数的时候会出现问题
-			if (bx0 < 0) { bx0 = 0;}
-			if (by0 < 0) { by0 = 0;}
-			if (bx1 > sht->bxsize) { bx1 = sht->bxsize; }
-			if (by1 > sht->bysize) { by1 = sht->bysize; }
-			//首先是临时图层在左边
+		printf("图层过大\n\n");
+		width_x = width/16+1;
+		high_x = high/16+1;
 
-			//临时图层在左上角
-			for (by = by0; by < by1; by++) {
-				vy = sht->vy0 + by;
-				for (bx = bx0; bx < bx1; bx++) {
-					vx = sht->vx0 + bx;
-					c = table_rgb565[buf[by * sht->bxsize + bx]];
-					if (c != sht->col_inv) {
-						temp_buf[(vy-vy0) * width + vx-vx0] = c;
+		printf("width_x = %d, high_x = %d\n", width_x, high_x);
+		
+		for(i=0;i<high_x;i++){
+			for(j=0;j<width_x;j++)
+			{
+				sheet_refreshsub(vx0+j*16, vy0+i*16, vx0+(j+1)*16, vy0+(i+1)*16);
+			}
+		}
+		
+	}else{
+		temp_buf = malloc(width * high *2);
+		if(temp_buf != NULL)
+		{
+			Get_Dasktop_Part(temp_buf, vx0, vy0, width, high);
+			for (h = 0; h <= ctl.top; h++) {
+				//遍历所有的图层
+				sht = ctl.sheets[h];
+				//获得图层信息
+				buf = sht->buf;
+				/* 获取临时图层更新位置相对于图层的位置 */
+				bx0 = vx0 - sht->vx0;
+				by0 = vy0 - sht->vy0;
+				bx1 = vx1 - sht->vx0;
+				by1 = vy1 - sht->vy0;	
+				//printf("bx0 = %d %d", bx0, vx0);
+				//算出来相对位置是负数的时候会出现问题
+				if (bx0 < 0) { bx0 = 0;}
+				if (by0 < 0) { by0 = 0;}
+				if (bx1 > sht->bxsize) { bx1 = sht->bxsize; }
+				if (by1 > sht->bysize) { by1 = sht->bysize; }
+				//首先是临时图层在左边
+
+				//临时图层在左上角
+				for (by = by0; by < by1; by++) {
+					vy = sht->vy0 + by;
+					for (bx = bx0; bx < bx1; bx++) {
+						vx = sht->vx0 + bx;
+						c = table_rgb565[buf[by * sht->bxsize + bx]];
+						if (c != sht->col_inv) {
+							temp_buf[(vy-vy0) * width + vx-vx0] = c;
+						}
 					}
 				}
+				
 			}
-			
-		}
 
-		boxfill_buf(temp_buf, vx0, vy0, width, high );
-		free(temp_buf);
+			boxfill_buf(temp_buf, vx0, vy0, width, high );
+			free(temp_buf);
+		}
+		else
+			printf("申请失败\n");
 	}
-	else
-		printf("申请失败\n");
 }
 	
 /**
@@ -210,7 +227,6 @@ void sheet_slide(struct SHEET *sht, int vx0, int vy0)
 	sht->vx0 = vx0;
 	sht->vy0 = vy0;
 	if (sht->height >= 0) { /* 图层的高度为显示的图层 */
-		printf("原来位置重新绘制\n");
 		sheet_refreshsub(old_vx0, old_vy0, old_vx0 + sht->bxsize, old_vy0 + sht->bysize);
 		sheet_refreshsub(vx0, vy0, vx0 + sht->bxsize, vy0 + sht->bysize);
 	}
@@ -232,29 +248,5 @@ void sheet_free(struct SHTCTL *ctl, struct SHEET *sht)
 }
 
 
-/**
-  * @brief  这个是操作系统初始化时候调用的函数
-  * @param  None
-  * @retval None
-  */
-void sheet_init(void)
-{
 
-	//初始化管理的结构体
-	shtctl_init(ILI9341_MORE_PIXEL, ILI9341_LESS_PIXEL);
-	//申请鼠标结构体
-	Mouse_sht = sheet_alloc(&ctl);
-	//设置鼠标图层
-	sheet_setbuf(Mouse_sht, Mouse_def.mouse, Mouse_def.Width, Mouse_def.High, 	0x9999);
-	Mouse_sht->vx0 = 310;
-	Mouse_sht->vy0 = 200;
-	
-	Windoes_sht = sheet_alloc(&ctl);
-	sheet_setbuf(Windoes_sht, buf_win, 60, 52, 0x9999);
-	Windoes_sht->vx0 = 20;
-	Windoes_sht->vy0 = 20;
-	
-	sheet_updown(&ctl, Windoes_sht, 1);
-	sheet_updown(&ctl, Mouse_sht, MAX_SHEETS);
-}
 

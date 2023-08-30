@@ -20,7 +20,7 @@
 #include "bsp_base_tim.h"
 #include "jiao_sheet.h"
 #include "./Key/bsp_key.h"
-#include "./task/jiao_task.h"
+//#include "./task/jiao_task.h"
 #include "jiao_FIFO.h"
 #include "./time/jiao_time.h"
 /*用于记录各种中断中产生的事件*/
@@ -44,16 +44,7 @@
 #define TIM2_FLAG			9
 #define TIM3_FLAG			10
 #define TIM4_FLAG			11
-struct Event_Flog{
-	//按键是否按下
-	//uint8_t Key1_num;
-	//uint8_t Key2_num;
-	//触摸屏是否按下
-	//uint8_t Touch_num;
-	struct FIFO8 System_Flags;
-	uint8_t system_flags_buf[16];
 
-};
 
 void JIAO_OS_Init(void);
 

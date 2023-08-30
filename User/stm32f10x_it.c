@@ -322,7 +322,7 @@ void  TOUCH_TIM_IRQHandler (void)
 		TIM_ClearITPendingBit(TOUCH_TIM , TIM_FLAG_Update);  		 
 	}		 	
 }
-
+extern struct TASKCTL *taskctl;
 
 /**
   * @brief  时钟中断函数,用于记录时间
@@ -350,24 +350,24 @@ void  TIME_TIM_IRQHandler (void)
 			}
 			/* 找到要处理的定时器 */
 			timer->flags = TIMER_FLAGS_ALLOC;
-			fifo8_put(timer->fifo, timer->data);
 			if(timer == task_exchang_timer)
 			{
 				//是任务的切换使用的计时器
 				exchange_flog=1;
+			}else{
+				fifo8_put(timer->fifo, timer->data);
 			}
 			timer = timer->next; /* 设置时间为下一个 */
-			printf("时间到\n");
-
 
 		}
+
 		timerctl.t0 = timer;
 		timerctl.next = timer->timeout;	
 		TIM_ClearITPendingBit(TIME_TIM , TIM_FLAG_Update); 
 		if(exchange_flog){
-			timer_settime(task_exchang_timer, 100);
+			timer_settime(task_exchang_timer, 10);
+			printf("切换任务%d   %d\n", taskctl->running, taskctl->now);
 			taskYIELD();
-
 		}
 	}		 	
 }

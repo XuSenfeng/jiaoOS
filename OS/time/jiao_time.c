@@ -137,12 +137,7 @@ void Time_OutEventHandler(int i)
 	
 	if(i==TIM1_FLAG)	
 	{
-		printf("\ntime1out i = %d\n\n", i);
-		timer_settime(task_exchang_timer, 1000);
-	}else if(i==TIM2_FLAG)
-	{
-		printf("\ntime2out i = %d\n\n", i);
-		timer_settime(timer2, 500);
+		//LED2_TOGGLE;
 	}
 
 	

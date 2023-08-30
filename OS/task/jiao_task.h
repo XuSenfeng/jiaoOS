@@ -3,9 +3,10 @@
 
 #include "jiao_list.h"
 #include <stdio.h>
-#include "jiao_os.h"
+//#include "jiao_FIFO.h"
 #include "bsp_led.h"
-
+#include "./lcd/bsp_xpt2046_lcd.h"
+#include "jiao_os.h"
 //这是一些任务初始化使用的参数
 
 //任务的名字的最大个数
@@ -23,18 +24,18 @@
 typedef struct tskTaskControlBlock
 {
 	volatile uint32_t    *pxTopOfStack;    /* 栈顶 */
-
-//	ListItem_t			    xStateListItem;   /* 任务节点 */
     
     uint32_t             *pxStack;         /* 任务栈起始地址 */
 	                                          /* 任务名称，字符串形式 */
 	char                    pcTaskName[ configMAX_TASK_NAME_LEN ];  
 } tskTCB;
+
 //一个任务,保存任务的属性
 struct TASK {
-	int flags;			//记录当前任务的状态,用于任务的申请
+	int flags;			//记录当前任务的状态,用于任务的申请,为1表示申请了没有运行,2表示运行中
 	tskTCB * tss;		//这一点记录任务的控制块
 };
+
 //任务的控制模块
 struct TASKCTL {
 	int running; /* 正在运行的任务的数量 */
@@ -108,6 +109,7 @@ void vTaskSwitchContext( void );
 struct TASK *task_alloc(void);
 void task_switch(void);
 void task_sleep(struct TASK *task);
+void task_run(struct TASK *task);
 
 
 /* 临界区管理 */

@@ -19,6 +19,7 @@ int main()
 #if USE_TASK_MODE
 	//使用任务模式
 	Task_main();
+	
 #endif
 	
 #if USE_OF_MOUSE

@@ -52,7 +52,7 @@ static void System_data_Init(void)
 	sheet_init();
 	
 	//标志位的初始化,主要用于时钟,触摸位置以及按键
-	FIFO8_Init(&EventFlog.System_Flags, 16, EventFlog.system_flags_buf);
+	FIFO8_Init(&EventFlog.System_Flags, 16, EventFlog.system_flags_buf, 0);
 	//设置时间计数器
 	Timer_init();
 }

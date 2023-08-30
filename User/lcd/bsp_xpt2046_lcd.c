@@ -899,13 +899,13 @@ void XPT2046_TouchEvenHandler(int i)
 	
 		if(i==1)
 		{
-			LED_GREEN;
+			//LED_GREEN;
 			
 			//获取触摸坐标
 			XPT2046_Get_TouchedPoint(&cinfo,strXPT2046_TouchPara);
 			
 			//输出调试信息到串口
-			XPT2046_DEBUG("x=%d,y=%d",cinfo.x,cinfo.y);
+			//XPT2046_DEBUG("x=%d,y=%d",cinfo.x,cinfo.y);
 #if 	USE_OF_MOUSE		
 			Draw_Mouse(cinfo.x, cinfo.y);
 #endif

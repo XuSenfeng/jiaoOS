@@ -6,13 +6,14 @@
   * @param  数据存储的数组
   * @retval None
   */
-void FIFO8_Init(struct FIFO8 *fifo, int size, unsigned char *buf)
+void FIFO8_Init(struct FIFO8 *fifo, int size, unsigned char *buf, struct TASK *task)
 {
 	fifo->size = size;
 	fifo->buf = buf;
 	fifo->free = size;
 	fifo->next_w = 0;
 	fifo->next_r = 0;
+	fifo->task = task; /* 设置相关的任务 */
 	
 }
 /**
@@ -35,6 +36,12 @@ int fifo8_put(struct FIFO8 *fifo, char data)
 		fifo->next_w = 0;
 	}
 	fifo->free--;
+	if (fifo->task != 0) {
+		if (fifo->task->flags != 2) { /* 任务没有运行 */
+			task_run(fifo->task); /* 让任务运行起来 */
+			//printf("运行");
+		}
+	}
 	return 0;
 }
 /**
@@ -74,7 +81,7 @@ int FIFO8_Status(struct FIFO8 *fifo)
 
 
 
-void fifo32_init(struct FIFO32 *fifo, int size, int *buf)
+void fifo32_init(struct FIFO32 *fifo, int size, int *buf, struct TASK *task)
 /* FIFO初始化 */
 {
 	fifo->size = size;

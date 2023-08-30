@@ -5,7 +5,7 @@ struct TASKCTL *taskctl;
 struct TIMER *task_timer;
 
 //定义任务栈
-#define TASK1_STACK_SIZE                    80
+#define TASK1_STACK_SIZE                    0x400
 uint32_t Task1Stack[TASK1_STACK_SIZE];
 
 #define TASK2_STACK_SIZE                    80
@@ -45,23 +45,30 @@ void Task1_Entry( void *p_arg )
 	int i;
 	timer_settime(task_exchang_timer, 100);
 	LED2_TOGGLE;
-	for( ;; )
-	{
+	EventFlog.System_Flags.task = task1;
 
+	//使用桌面模式,对各种事件进行检查
+	while(1){
+		//检测触控屏按压事件
 		if(FIFO8_Status(&EventFlog.System_Flags))
 		{
-			
 			i = FIFO8_Get(&EventFlog.System_Flags);
-		
-			if(i==TIM1_FLAG)	
+			if(i==1 || i==2)
 			{
-				LED2_TOGGLE;
+				//处理的事件是触摸屏
+				XPT2046_TouchEvenHandler(i);
+			}else if(i>2 && i<7){
+				//处理的事件是按键
+				Key_TouchEventHandler(i);
+			}else{
+				//处理的事件是定时器
+				Time_OutEventHandler(i);
 			}
-			printf("任务1\n");
-		}	
+			printf("处理");
+		}else{
+			task_sleep(task1);
+		}			
 
-		//__WFI();
-		
 	}
 }
 uint8_t flag2;
@@ -73,24 +80,12 @@ uint8_t flag2;
   */
 void Task2_Entry( void *p_arg )
 {
-	int i;
 
 	for( ;; )
 	{	
-
-		if(FIFO8_Status(&EventFlog.System_Flags))
-		{
-
-			i = FIFO8_Get(&EventFlog.System_Flags);
-		
-			if(i==TIM1_FLAG)	
-			{
-				LED1_TOGGLE;				
-			}
-			printf("任务2");
-		}
-		task_sleep(task2);
-		//__WFI();
+		printf("task2\n");
+		delay(0xfffff);
+		LED2_TOGGLE;
 	}
 }
 /**
@@ -203,21 +198,7 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,              /* 任
 		*pxCreatedTask = ( TaskHandle_t ) pxNewTCB;
 	}
 }
-///**
-//  * @brief  初始化任务优先级列表控制块的数组
-//  * @param  无
-//  * @retval None
-//  */
-//void prvInitialiseTaskLists( void )
-//{
-//    UBaseType_t uxPriority;
-//    
-//    
-//    for( uxPriority = ( UBaseType_t ) 0U; uxPriority < ( UBaseType_t ) configMAX_PRIORITIES; uxPriority++ )
-//	{
-//		vListInitialise( &( pxReadyTasksLists[ uxPriority ] ) );
-//	}
-//}
+
 /**
   * @brief  初始化任务的栈
   * @param  栈的顶层
@@ -336,7 +317,7 @@ struct TASK *task_init(void)
 	}
 	task = task_alloc();
 	task->flags = 2; /* 标志正在活动中 */
-	taskctl->running = 1;
+	taskctl->running = 0;
 	taskctl->now = 0;
 	taskctl->tasks[0] = task;
 	return task;
@@ -348,13 +329,12 @@ struct TASK *task_init(void)
   */
 void task_switch(void)
 {
-	if (taskctl->running >= 2) {
-		taskctl->now++;
-		if (taskctl->now == taskctl->running) {
-			taskctl->now = 0;
-		}
-		pxCurrentTCB = taskctl->tasks[taskctl->now]->tss;
+	taskctl->now++;
+
+	if (taskctl->now == taskctl->running) {
+		taskctl->now = 0;
 	}
+	pxCurrentTCB = taskctl->tasks[taskctl->now]->tss;
 	return;
 }
 /**
@@ -401,7 +381,6 @@ void task_sleep(struct TASK *task)
 {
 	int i;
 	char ts = 0;
-	__disable_irq();
 	if (task->flags == 2) {		/* 指定的任务正在运行 */
 		if (task == taskctl->tasks[taskctl->now]) {
 			ts = 1; /* 这是正在运行的任务 */
@@ -427,13 +406,10 @@ void task_sleep(struct TASK *task)
 			/* 当前的任务在运行 */
 			if (taskctl->now >= taskctl->running) {
 				/* now出现异常进行修复 */
-				
 				taskctl->now = 0;
-			}
-			__enable_irq();
-			taskYIELD();
+				taskYIELD();
+			}			
 		}
-		__enable_irq();
 	}
 	return;
 }
@@ -497,7 +473,7 @@ void Task_main(void)
 	//申请另一个任务
 	task_run(task1);
 	task_run(task2);
-
+	
 	vTaskStartScheduler();
 }
 

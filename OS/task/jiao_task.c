@@ -13,19 +13,17 @@ uint32_t Task2Stack[TASK2_STACK_SIZE];
 //任务控制块
 TCB_t Task1TCB;
 TCB_t Task2TCB;
-
+//初始化的两个时钟
 extern struct TIMER * task_exchang_timer, *timer2;
+//标志位的结构体
 extern struct Event_Flog EventFlog;
 
 TCB_t * volatile pxCurrentTCB = NULL;
 
 //临界段使用的变量
 static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
+//两个任务指针
 struct TASK *task1, *task2;
-
-
-//运行的任务
-//List_t pxReadyTasksLists[ configMAX_PRIORITIES ];
 
 
 /* 软件延时 */
@@ -64,7 +62,6 @@ void Task1_Entry( void *p_arg )
 				//处理的事件是定时器
 				Time_OutEventHandler(i);
 			}
-			printf("处理");
 		}else{
 			task_sleep(task1);
 		}			
@@ -182,11 +179,6 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,              /* 任
 	/* 任务名字的长度不能超过configMAX_TASK_NAME_LEN */
 	pxNewTCB->pcTaskName[ configMAX_TASK_NAME_LEN - 1 ] = '\0';
 
-    /* 初始化TCB中的xStateListItem节点 */
-//    vListInitialiseItem( &( pxNewTCB->xStateListItem ) );
-    /* 设置xStateListItem节点的拥有者 */
-//	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xStateListItem ), pxNewTCB );
-    
     
     /* 初始化任务栈 */
 	pxNewTCB->pxTopOfStack = pxPortInitialiseStack( pxTopOfStack, pxTaskCode, pvParameters );   
@@ -418,6 +410,7 @@ void task_sleep(struct TASK *task)
 *                             临界段相关函数
 *************************************************************************
 */
+//进入临界区
 void vPortEnterCritical( void )
 {
 	//关闭所有的中断
@@ -435,7 +428,7 @@ void vPortEnterCritical( void )
 		//configASSERT( ( portNVIC_INT_CTRL_REG & portVECTACTIVE_MASK ) == 0 );
 	}
 }
-
+//退出临界区
 void vPortExitCritical( void )
 {
 	uxCriticalNesting--;
@@ -445,6 +438,13 @@ void vPortExitCritical( void )
 		portENABLE_INTERRUPTS();
 	}
 }
+
+
+
+
+
+
+
 #if USE_TASK_MODE
 /**
   * @brief  测试函数
@@ -453,10 +453,10 @@ void vPortExitCritical( void )
   */
 void Task_main(void)
 {
-
+	//获取两个任务的结构体指针
 	task1 = task_init();
 	task2 = task_alloc();
-
+	//设置任务的实际操控的TCB
 	task1->tss = xTaskCreateStatic(Task1_Entry, 
 						"Task1", 
 						TASK1_STACK_SIZE, 
@@ -470,10 +470,10 @@ void Task_main(void)
 						Task2Stack,
 						&Task2TCB);
 
-	//申请另一个任务
+	//申请一个任务, 任务设置为运行状态
 	task_run(task1);
 	task_run(task2);
-	
+	//开启任务的调度
 	vTaskStartScheduler();
 }
 

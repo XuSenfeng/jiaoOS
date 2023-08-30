@@ -112,14 +112,6 @@ void UsageFault_Handler(void)
   }
 }
 
-/**
-  * @brief  This function handles SVCall exception.
-  * @param  None
-  * @retval None
-  */
-//void SVC_Handler(void)
-//{
-//}
 
 /**
   * @brief  This function handles Debug Monitor exception.
@@ -294,7 +286,7 @@ void EXTI15_10_IRQHandler(void)
 /*  file (startup_stm32f10x_xx.s).                                            */
 /******************************************************************************/
 /**
-  * @brief  时钟中断函数,触摸屏按下的时候触发
+  * @brief  时钟中断函数,触摸屏按下的时候触发, 之后调用一个时钟中断进行扫描
   * @param  无
   * @retval None
   */
@@ -305,12 +297,15 @@ void  TOUCH_TIM_IRQHandler (void)
 		//判断现在的时钟触摸屏状态
 		if(XPT2046_PENIRQ_Read() == Bit_RESET)
 		{
+			//触摸屏保持按下
 			fifo8_put(&EventFlog.System_Flags, TOUCH_DOWN);
 		}else
 		{
+			//触摸抬起
 			fifo8_put(&EventFlog.System_Flags, TOUCH_UP);
-
+			//关闭时钟
 			TIM_Cmd(TOUCH_TIM, DISABLE);
+			//使能EXTI
 			EXTI_InitTypeDef EXTI_InitStruct;
 			EXTI_InitStruct.EXTI_Line = EXTI_Line4;	//设置为EXTI0
 			EXTI_InitStruct.EXTI_LineCmd = ENABLE;	//关闭中断
@@ -365,8 +360,8 @@ void  TIME_TIM_IRQHandler (void)
 		timerctl.next = timer->timeout;	
 		TIM_ClearITPendingBit(TIME_TIM , TIM_FLAG_Update); 
 		if(exchange_flog){
-			timer_settime(task_exchang_timer, 10);
-			printf("切换任务%d   %d\n", taskctl->running, taskctl->now);
+			//设置下一次切换的时间
+			timer_settime(task_exchang_timer, TIME_TO_CHANGE_TASK);
 			taskYIELD();
 		}
 	}		 	

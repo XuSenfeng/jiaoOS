@@ -13,8 +13,8 @@ static void Hareware_Init(void)
 	//初始化定时器
 	TOUCH_TIM_Init();
 	//初始化串口
-
 	USART_Config();
+	//初始化LED
 	LED_GPIO_Config();
 	printf("你好\n");
 	//初始化屏幕
@@ -47,10 +47,8 @@ static void System_data_Init(void)
 	init_mouse_cursor8(Mouse_def.mouse);
 	//初始化一个窗口的画面
 	make_window8(buf_win, 60, 52, "焦");
-	
 	//初始化图层
 	sheet_init();
-	
 	//标志位的初始化,主要用于时钟,触摸位置以及按键
 	FIFO8_Init(&EventFlog.System_Flags, 16, EventFlog.system_flags_buf, 0);
 	//设置时间计数器

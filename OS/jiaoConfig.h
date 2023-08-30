@@ -11,7 +11,7 @@
 /* 是否使用鼠标 */
 #define USE_OF_MOUSE			1
 
-
+#define TIME_TO_CHANGE_TASK		10
 
 /****************模式选择,必须选择一个***************/
 

@@ -4,9 +4,11 @@
 初始化一个系统时钟, 这里使用的是TIM7
 ************************************/
 
-
+//时钟控制块
 struct TIMERCTL timerctl;
+//申请的时钟的指针
 struct TIMER * task_exchang_timer, *timer2;
+//标志位
 extern struct Event_Flog EventFlog;
 
 

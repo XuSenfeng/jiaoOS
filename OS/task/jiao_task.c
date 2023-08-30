@@ -1,4 +1,8 @@
 #include "./task/jiao_task.h"
+//任务控制模块
+struct TASKCTL task_memman;
+struct TASKCTL *taskctl;
+struct TIMER *task_timer;
 
 //定义任务栈
 #define TASK1_STACK_SIZE                    80
@@ -9,9 +13,7 @@ uint32_t Task2Stack[TASK2_STACK_SIZE];
 //任务控制块
 TCB_t Task1TCB;
 TCB_t Task2TCB;
-//任务句柄,实际上就是初始化之后的TCB,第一项是栈顶指针
-TaskHandle_t Task1_Handle;
-TaskHandle_t Task2_Handle;
+
 extern struct TIMER * task_exchang_timer, *timer2;
 extern struct Event_Flog EventFlog;
 
@@ -19,11 +21,11 @@ TCB_t * volatile pxCurrentTCB = NULL;
 
 //临界段使用的变量
 static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
-
+struct TASK *task1, *task2;
 
 
 //运行的任务
-List_t pxReadyTasksLists[ configMAX_PRIORITIES ];
+//List_t pxReadyTasksLists[ configMAX_PRIORITIES ];
 
 
 /* 软件延时 */
@@ -87,7 +89,7 @@ void Task2_Entry( void *p_arg )
 			}
 			printf("任务2");
 		}
-
+		task_sleep(task2);
 		//__WFI();
 	}
 }
@@ -186,9 +188,9 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,              /* 任
 	pxNewTCB->pcTaskName[ configMAX_TASK_NAME_LEN - 1 ] = '\0';
 
     /* 初始化TCB中的xStateListItem节点 */
-    vListInitialiseItem( &( pxNewTCB->xStateListItem ) );
+//    vListInitialiseItem( &( pxNewTCB->xStateListItem ) );
     /* 设置xStateListItem节点的拥有者 */
-	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xStateListItem ), pxNewTCB );
+//	listSET_LIST_ITEM_OWNER( &( pxNewTCB->xStateListItem ), pxNewTCB );
     
     
     /* 初始化任务栈 */
@@ -201,21 +203,21 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,              /* 任
 		*pxCreatedTask = ( TaskHandle_t ) pxNewTCB;
 	}
 }
-/**
-  * @brief  初始化任务优先级列表控制块的数组
-  * @param  无
-  * @retval None
-  */
-void prvInitialiseTaskLists( void )
-{
-    UBaseType_t uxPriority;
-    
-    
-    for( uxPriority = ( UBaseType_t ) 0U; uxPriority < ( UBaseType_t ) configMAX_PRIORITIES; uxPriority++ )
-	{
-		vListInitialise( &( pxReadyTasksLists[ uxPriority ] ) );
-	}
-}
+///**
+//  * @brief  初始化任务优先级列表控制块的数组
+//  * @param  无
+//  * @retval None
+//  */
+//void prvInitialiseTaskLists( void )
+//{
+//    UBaseType_t uxPriority;
+//    
+//    
+//    for( uxPriority = ( UBaseType_t ) 0U; uxPriority < ( UBaseType_t ) configMAX_PRIORITIES; uxPriority++ )
+//	{
+//		vListInitialise( &( pxReadyTasksLists[ uxPriority ] ) );
+//	}
+//}
 /**
   * @brief  初始化任务的栈
   * @param  栈的顶层
@@ -313,16 +315,128 @@ BaseType_t xPortStartScheduler( void )
 void vTaskSwitchContext( void )
 {    
     /* 两个任务轮流切换 */
-    if( pxCurrentTCB == &Task1TCB )
-    {
-        pxCurrentTCB = &Task2TCB;
-    }
-    else
-    {
-        pxCurrentTCB = &Task1TCB;
-    }
+	task_switch();
 }
+/********下面是任务优先级控制模块**********/
 
+/**
+  * @brief  初始化任务优先级控制模块, 同时初始化一个任务
+  * @param  无
+  * @retval 返回第一个任务的控制块
+  */
+struct TASK *task_init(void)
+{
+	int i;
+	struct TASK *task;
+	//设置控制模块
+	taskctl = &task_memman;
+	//修改控制模块的所有任务的标志位
+	for (i = 0; i < MAX_TASKS; i++) {
+		taskctl->tasks0[i].flags = 0;
+	}
+	task = task_alloc();
+	task->flags = 2; /* 标志正在活动中 */
+	taskctl->running = 1;
+	taskctl->now = 0;
+	taskctl->tasks[0] = task;
+	return task;
+}
+/**
+  * @brief  
+  * @param  无
+  * @retval 返回一个任务结构体,失败的话返回0
+  */
+void task_switch(void)
+{
+	if (taskctl->running >= 2) {
+		taskctl->now++;
+		if (taskctl->now == taskctl->running) {
+			taskctl->now = 0;
+		}
+		pxCurrentTCB = taskctl->tasks[taskctl->now]->tss;
+	}
+	return;
+}
+/**
+  * @brief  申请一个任务
+  * @param  无
+  * @retval 返回一个任务结构体,失败的话返回0
+  */
+struct TASK *task_alloc(void)
+{
+	int i;
+	struct TASK *task;
+	__disable_irq();
+	for (i = 0; i < MAX_TASKS; i++) {
+		if (taskctl->tasks0[i].flags == 0) {
+			task = &taskctl->tasks0[i];
+			task->flags = 1; /* 使用中 */
+			__enable_irq();
+			return task;
+		}
+	}
+	__enable_irq();
+	return 0; /* 所有的都在使用中 */
+}
+/**
+  * @brief  把任务插在数组的最后面
+  * @param  无
+  * @retval 返回一个任务结构体,失败的话返回0
+  */
+void task_run(struct TASK *task)
+{
+	__disable_irq();
+	task->flags = 2; /* 运行中 */
+	taskctl->tasks[taskctl->running] = task;
+	taskctl->running++;
+	__enable_irq();
+	return;
+}
+/**
+  * @brief  把一个任务设置为睡眠状态
+  * @param  无
+  * @retval 返回一个任务结构体,失败的话返回0
+  */
+void task_sleep(struct TASK *task)
+{
+	int i;
+	char ts = 0;
+	__disable_irq();
+	if (task->flags == 2) {		/* 指定的任务正在运行 */
+		if (task == taskctl->tasks[taskctl->now]) {
+			ts = 1; /* 这是正在运行的任务 */
+		}
+		/* 找到当前运行的任务在列表中的位置 */
+		for (i = 0; i < taskctl->running; i++) {
+			if (taskctl->tasks[i] == task) {
+				/* 找到了 */
+				break;
+			}
+		}
+		taskctl->running--;
+		if (i < taskctl->now) {
+			//这个任务在当前的任务之前
+			taskctl->now--; /* 当前运行的任务的位置减少一个*/
+		}
+		/* 重新排序 */
+		for (; i < taskctl->running; i++) {
+			taskctl->tasks[i] = taskctl->tasks[i + 1];
+		}
+		task->flags = 1; /* 任务的状态 */
+		if (ts != 0) {
+			/* 当前的任务在运行 */
+			if (taskctl->now >= taskctl->running) {
+				/* now出现异常进行修复 */
+				
+				taskctl->now = 0;
+			}
+			__enable_irq();
+			taskYIELD();
+		}
+		__enable_irq();
+	}
+	return;
+}
 /*
 *************************************************************************
 *                             临界段相关函数
@@ -363,23 +477,27 @@ void vPortExitCritical( void )
   */
 void Task_main(void)
 {
-	Task1_Handle = xTaskCreateStatic(Task1_Entry, 
+
+	task1 = task_init();
+	task2 = task_alloc();
+
+	task1->tss = xTaskCreateStatic(Task1_Entry, 
 						"Task1", 
 						TASK1_STACK_SIZE, 
 						NULL, 
 						Task1Stack,
 						&Task1TCB);
-	Task2_Handle = xTaskCreateStatic(Task2_Entry, 
+	task2->tss = xTaskCreateStatic(Task2_Entry, 
 						"Task2", 
 						TASK2_STACK_SIZE, 
 						NULL, 
 						Task2Stack,
 						&Task2TCB);
-	//初始化优先级列表控制器
-	prvInitialiseTaskLists();
-	//把任务插入优先级列表
-	vListInsert(&pxReadyTasksLists[2], &Task2TCB.xStateListItem);
-	vListInsert(&pxReadyTasksLists[3], &Task1TCB.xStateListItem);
+
+	//申请另一个任务
+	task_run(task1);
+	task_run(task2);
+
 	vTaskStartScheduler();
 }
 

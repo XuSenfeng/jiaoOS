@@ -10,31 +10,45 @@
 
 //任务的名字的最大个数
 #define configMAX_TASK_NAME_LEN		            ( 16 )
-//任务的等级
-#define configMAX_PRIORITIES		            ( 5 )
+//最大任务数
+#define MAX_TASKS		            ( 5 )
 #define portINITIAL_XPSR			        ( 0x01000000 )
 #define portSTART_ADDRESS_MASK				( ( StackType_t ) 0xfffffffeUL )
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 	191   /* 高四位有效，即等于0xb0，或者是11 */
-//任务控制器,单个任务控制使用
+
+
+
+
+//任务控制器,单个任务控制使用,保存任务初始化需要的信息
 typedef struct tskTaskControlBlock
 {
 	volatile uint32_t    *pxTopOfStack;    /* 栈顶 */
 
-	ListItem_t			    xStateListItem;   /* 任务节点 */
+//	ListItem_t			    xStateListItem;   /* 任务节点 */
     
     uint32_t             *pxStack;         /* 任务栈起始地址 */
 	                                          /* 任务名称，字符串形式 */
 	char                    pcTaskName[ configMAX_TASK_NAME_LEN ];  
 } tskTCB;
-
+//一个任务,保存任务的属性
+struct TASK {
+	int flags;			//记录当前任务的状态,用于任务的申请
+	tskTCB * tss;		//这一点记录任务的控制块
+};
+//任务的控制模块
 struct TASKCTL {
 	int running; /* 正在运行的任务的数量 */
 	int now; /* 现在运行的任务 */
-	tskTCB *tasks[configMAX_PRIORITIES];
-	tskTCB tasks0[configMAX_PRIORITIES];
+	struct TASK *tasks[MAX_TASKS];
+	struct TASK tasks0[MAX_TASKS];
 };
 
-
+//一些变量重新定义
+typedef tskTCB TCB_t;
+typedef void * TaskHandle_t;
+typedef void (*TaskFunction_t)( void * );
+typedef uint32_t StackType_t;
+typedef long BaseType_t;
 //内核控制寄存器
 #define portNVIC_SYSPRI2_REG				( * ( ( volatile uint32_t * ) 0xe000ed20 ) )
 //优先级设置
@@ -47,12 +61,7 @@ struct TASKCTL {
 #define xPortSysTickHandler  SysTick_Handler
 #define vPortSVCHandler      SVC_Handler
 
-//一些变量重新定义
-typedef tskTCB TCB_t;
-typedef void * TaskHandle_t;
-typedef void (*TaskFunction_t)( void * );
-typedef uint32_t StackType_t;
-typedef long BaseType_t;
+
 
 
 /* 中断控制状态寄存器：0xe000ed04
@@ -93,9 +102,12 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,              /* 任
 									void * const pvParameters,              /* 任务形参 */
 									TaskHandle_t * const pxCreatedTask,     /* 任务句柄 */
 									TCB_t *pxNewTCB );                     /* 任务控制块指针 */
-void prvInitialiseTaskLists( void );
+//void prvInitialiseTaskLists( void );
 BaseType_t xPortStartScheduler( void );
 void vTaskSwitchContext( void );
+struct TASK *task_alloc(void);
+void task_switch(void);
+void task_sleep(struct TASK *task);
 
 
 /* 临界区管理 */

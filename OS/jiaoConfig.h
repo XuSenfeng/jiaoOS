@@ -20,7 +20,7 @@
 + 在Task_main()进行任务的申请,之后进入任务之中
 + 使用时钟进行切换
 */
-#define USE_TASK_MODE			0
+#define USE_TASK_MODE			1
 
 //使用桌面模式,需要将TASK模式设置为关闭
 #define USE_DASKTOP_MODE		1

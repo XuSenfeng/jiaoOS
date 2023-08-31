@@ -7,7 +7,7 @@ extern struct SHEET * Mouse_sht, * Windoes_sht;
 extern uint16_t Old_Color[20*40];
 //初始化一个鼠标为全局变量
 Mouse_Message_Def Mouse_def;
-//这里是操作系统使用的颜色的RGB565格式
+//这里是操作系统使用的颜色的RGB565格式,这样可以使用8位进行保存颜色,之后带入数组进行转换为16位
 uint16_t table_rgb565[17] = {
 	0x0000,	/*  0:黒 */
 	0xf800,	/*  1:亮红 */
@@ -84,13 +84,12 @@ void flish_Disply_fill8(int x0, int y0, int x1, int y1)
 		ILI9341_Read_Datas(Color_Data, x0, y0+i, width, 1);
 		//这里由于每一个颜色是两个位, 所以计算的时候需要乘以2
 		SPI_FLASH_BufferWrite((uint8_t *)Color_Data, (DASKTOP_SHEET_ADDR + (x0 + (y0+i) * ILI9341_MORE_PIXEL)*2), width*2);
-		printf("写入%d\n", i);
 	}
 	return;
 }
 
 /**
-  * @brief  绘制桌面,初始化鼠标
+  * @brief  绘制桌面,初始化鼠标,如果桌面没有在Flash里面初始化就进行初始化
   * @param  无
   * @retval None
   */
@@ -105,7 +104,7 @@ void Draw_Dasktop(void)
 	//读取Flash里面图层是否保存的初始化信息
 	SPI_FLASH_BufferRead(&Dasktop_Flash_flag,DASKTOP_SHEET_FLAG_ADDR,1);
 	//ILI9341_GramScan(3);
-	//初始化桌面
+	//初始化桌面,直接在屏幕上进行绘制
 	boxfill8(COL8_008484,  0,         0,          xsize, ysize - 29);
 	boxfill8(COL8_C6C6C6,  0,         ysize - 28, xsize -  1, ysize - 28);
 	boxfill8(COL8_FFFFFF,  0,         ysize - 27, xsize -  1, ysize - 27);
@@ -350,20 +349,18 @@ void make_window8(uint8_t *buf, int xsize, int ysize, char *title)
   * @param  背景颜色
   * @retval None
   */
-//	make_window8(buf_win, 160, 52, "window");
-//	make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
-void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c)
+void make_textbox8(uint8_t *buf, int xsize, int x0, int y0, int sx, int sy, int c)
 {
 	int x1 = x0 + sx, y1 = y0 + sy;
-	buf_fill8(sht->buf, sht->bxsize, COL8_848484, x0 - 2, y0 - 3, x1 + 1, y0 - 3);
-	buf_fill8(sht->buf, sht->bxsize, COL8_848484, x0 - 3, y0 - 3, x0 - 3, y1 + 1);
-	buf_fill8(sht->buf, sht->bxsize, COL8_FFFFFF, x0 - 3, y1 + 2, x1 + 1, y1 + 2);
-	buf_fill8(sht->buf, sht->bxsize, COL8_FFFFFF, x1 + 2, y0 - 3, x1 + 2, y1 + 2);
-	buf_fill8(sht->buf, sht->bxsize, COL8_000000, x0 - 1, y0 - 2, x1 + 0, y0 - 2);
-	buf_fill8(sht->buf, sht->bxsize, COL8_000000, x0 - 2, y0 - 2, x0 - 2, y1 + 0);
-	buf_fill8(sht->buf, sht->bxsize, COL8_C6C6C6, x0 - 2, y1 + 1, x1 + 0, y1 + 1);
-	buf_fill8(sht->buf, sht->bxsize, COL8_C6C6C6, x1 + 1, y0 - 2, x1 + 1, y1 + 1);
-	buf_fill8(sht->buf, sht->bxsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
+	buf_fill8(buf, xsize, COL8_848484, x0 - 2, y0 - 3, x1 + 1, y0 - 3);
+	buf_fill8(buf, xsize, COL8_848484, x0 - 3, y0 - 3, x0 - 3, y1 + 1);
+	buf_fill8(buf, xsize, COL8_FFFFFF, x0 - 3, y1 + 2, x1 + 1, y1 + 2);
+	buf_fill8(buf, xsize, COL8_FFFFFF, x1 + 2, y0 - 3, x1 + 2, y1 + 2);
+	buf_fill8(buf, xsize, COL8_000000, x0 - 1, y0 - 2, x1 + 0, y0 - 2);
+	buf_fill8(buf, xsize, COL8_000000, x0 - 2, y0 - 2, x0 - 2, y1 + 0);
+	buf_fill8(buf, xsize, COL8_C6C6C6, x0 - 2, y1 + 1, x1 + 0, y1 + 1);
+	buf_fill8(buf, xsize, COL8_C6C6C6, x1 + 1, y0 - 2, x1 + 1, y1 + 1);
+	buf_fill8(buf, xsize, c,           x0 - 1, y0 - 1, x1 + 0, y1 + 0);
 	return;
 }
 #if Jiao_Debug

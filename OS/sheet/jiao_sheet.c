@@ -4,8 +4,9 @@
 #define SHEET_USE		1
 //图层控制结构体
 struct SHEET * Mouse_sht, * Windoes_sht;
-extern Mouse_Message_Def Mouse_def;
+//extern Mouse_Message_Def Mouse_def;
 extern uint8_t buf_win[120*52];
+//图层控制模块
 struct SHTCTL ctl;
 
 /**
@@ -185,11 +186,22 @@ void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
 	} else if (old < height) {	/* 比之前的图层高 */
 		if (old >= 0) {
 			/* 之前的图层已经显示了 */
+			printf("\n%d %d\n", old, height);
+
 			for (h = old; h < height; h++) {
 				ctl->sheets[h] = ctl->sheets[h + 1];
-				ctl->sheets[h]->height = h;
+				if(ctl->sheets[h]!=0){
+					//这时候更改的图层为最高层,位移的时候最高的地方为空
+					ctl->sheets[h]->height = h;
+					
+				}else
+				{
+					height--;
+				}
+
 			}
 			ctl->sheets[height] = sht;
+
 		} else {	/* 之前没有显示 */
 			/* 首先把上面的图层上移 */
 			for (h = ctl->top; h >= height; h--) {
@@ -199,6 +211,7 @@ void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
 			ctl->sheets[height] = sht;
 			ctl->top++; /* 所有图层的数量加一 */
 		}
+
 		sheet_refreshsub(sht->vx0, sht->vy0, sht->vx0 + sht->bxsize, sht->vy0 + sht->bysize);
 	}
 	return;

@@ -48,7 +48,7 @@ int main()
 			}
 		}	
 
-		__WFI();	//WFI指令进入睡眠
+		__WFI();	//WFI指令进入睡眠,减少功耗
 	}
 #endif	
 }

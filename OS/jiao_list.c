@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "jiao_list.h"
 
-
+//这个是FreeRTOS的节点控制,暂时没有使用
 /* 链表根节点初始化 */
 void vListInitialise( List_t * const pxList )
 {

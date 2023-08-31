@@ -117,7 +117,18 @@ void Key_TouchEventHandler(int i)
 		if(i==KEY2_DOWN)
 		{	
 			//KAY2按下,在这里设置处理
-			sheet_slide(Windoes_sht, Mouse_def.x, Mouse_def.y);
+			if(Windoes_sht->height==-1)
+			{
+				//这时候的窗口被隐藏
+				sheet_updown(&ctl, Windoes_sht, 1);
+				//设置鼠标为最高层的图层
+				printf("设置窗口");
+				sheet_updown(&ctl, Mouse_sht, MAX_SHEETS);
+				printf("%d", Mouse_sht->height);
+			}else
+			{
+				sheet_slide(Windoes_sht, Mouse_def.x, Mouse_def.y);
+			}
 			printf("Key2 down\n");
 		}
 		if(i==KEY2_UP)

@@ -12,6 +12,8 @@
 #define USE_OF_MOUSE			1
 
 #define TIME_TO_CHANGE_TASK		10
+//是否强制进触摸屏校准,设置为1的时候会进行校准
+#define TOUCH_SCREEN_CALIBRATE	0
 
 /****************模式选择,必须选择一个***************/
 

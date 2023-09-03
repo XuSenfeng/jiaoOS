@@ -87,7 +87,7 @@ static void System_data_Init(void)
 	//初始化鼠标的数组
 	init_mouse_cursor8(Mouse_def.mouse);
 	//初始化一个窗口的画面
-	make_window8(buf_win, 120, 60, "焦");
+	make_window8(buf_win, 120, 60, "焦", 1);
 	//初始化图层
 	sheet_init();
 	//标志位的初始化,主要用于时钟,触摸位置以及按键

@@ -34,6 +34,7 @@ typedef struct tskTaskControlBlock
 struct TASK {
 	int flags;			//记录当前任务的状态,用于任务的申请,为1表示申请了没有运行,2表示运行中
 	tskTCB * tss;		//这一点记录任务的控制块
+	int priority;
 };
 
 //任务的控制模块
@@ -109,7 +110,7 @@ void vTaskSwitchContext( void );
 struct TASK *task_alloc(void);
 void task_switch(void);
 void task_sleep(struct TASK *task);
-void task_run(struct TASK *task);
+void task_run(struct TASK *task, int priority);
 
 
 /* 临界区管理 */

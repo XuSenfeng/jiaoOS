@@ -3,7 +3,7 @@
 struct TASKCTL task_memman;
 struct TASKCTL *taskctl;
 struct TIMER *task_timer;
-
+int next_priority=10;
 //定义任务栈
 #define TASK1_STACK_SIZE                    0x580
 uint32_t Task1Stack[TASK1_STACK_SIZE];
@@ -309,6 +309,7 @@ struct TASK *task_init(void)
 	}
 	task = task_alloc();
 	task->flags = 2; /* 标志正在活动中 */
+	task->priority = 20;
 	taskctl->running = 0;
 	taskctl->now = 0;
 	taskctl->tasks[0] = task;
@@ -321,11 +322,18 @@ struct TASK *task_init(void)
   */
 void task_switch(void)
 {
+	int next;
 	taskctl->now++;
-
-	if (taskctl->now == taskctl->running) {
+	next = taskctl->now + 1;
+	if (taskctl->now >= taskctl->running) {
 		taskctl->now = 0;
 	}
+	if (next >= taskctl->running) {
+		next = 0;
+	}
+	//timer_settime_without_change_irq(task_exchang_timer, taskctl->tasks[taskctl->now]->priority);
+	//printf("time = %d\n", taskctl->tasks[taskctl->now]->priority);
+	next_priority = taskctl->tasks[next]->priority;
 	pxCurrentTCB = taskctl->tasks[taskctl->now]->tss;
 	return;
 }
@@ -355,9 +363,12 @@ struct TASK *task_alloc(void)
   * @param  无
   * @retval 返回一个任务结构体,失败的话返回0
   */
-void task_run(struct TASK *task)
+void task_run(struct TASK *task, int priority)
 {
 	__disable_irq();
+	if (priority > 0) {
+		task->priority = priority;
+	}
 	task->flags = 2; /* 运行中 */
 	taskctl->tasks[taskctl->running] = task;
 	taskctl->running++;
@@ -471,8 +482,9 @@ void Task_main(void)
 						&Task2TCB);
 
 	//申请一个任务, 任务设置为运行状态
-	task_run(task1);
-	task_run(task2);
+	task_run(task1, 20);
+	task_run(task2, 10);
+
 	//开启任务的调度
 	vTaskStartScheduler();
 }

@@ -32,7 +32,7 @@
 #include "./time/jiao_time.h"
 #include "jiao_os.h"
 extern struct TIMER * task_exchang_timer, *timer2;
-
+extern int next_priority;
 extern struct Event_Flog EventFlog;
 extern struct TIMERCTL timerctl;
 uint32_t time=0;
@@ -361,7 +361,8 @@ void  TIME_TIM_IRQHandler (void)
 		TIM_ClearITPendingBit(TIME_TIM , TIM_FLAG_Update); 
 		if(exchange_flog){
 			//设置下一次切换的时间
-			timer_settime(task_exchang_timer, TIME_TO_CHANGE_TASK);
+			printf("next = %d\n", next_priority);
+			timer_settime(task_exchang_timer, next_priority);
 			taskYIELD();
 		}
 	}		 	

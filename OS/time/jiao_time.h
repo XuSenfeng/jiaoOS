@@ -25,5 +25,6 @@ void Timer_init(void);
 void init_time_ctl(void);
 void Time_OutEventHandler(int i);
 void timer_settime(struct TIMER *timer, unsigned int timeout);
+void timer_settime_without_change_irq(struct TIMER *timer, unsigned int timeout);
 
 #endif

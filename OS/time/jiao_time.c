@@ -111,8 +111,38 @@ void timer_settime(struct TIMER *timer, unsigned int timeout)
 		}
 	}
 }
+/**
+  * @brief  设置一个时钟多长时间后提醒(这个不会更改中断的状态,可以在屏蔽中断的时候使用)
+  * @param  时钟结构体
+  * @param  设置的时间
+  * @retval None
+  */
+void timer_settime_without_change_irq(struct TIMER *timer, unsigned int timeout)
+{
+	struct TIMER *t, *s;
+	timer->timeout = timeout + timerctl.count;
+	timer->flags = TIMER_FLAGS_USING;
 
-
+	t = timerctl.t0;
+	if (timer->timeout <= t->timeout) {
+		/* 直接插入头部 */
+		timerctl.t0 = timer;
+		timer->next = t; /* 下一个是t */
+		timerctl.next = timer->timeout;
+		return;
+	}
+	/* 寻找中间的位置 */
+	for (;;) {
+		s = t;
+		t = t->next;
+		if (timer->timeout <= t->timeout) {
+			/* s和t的中间进行插入 */
+			s->next = timer; /* s下一个是timer */
+			timer->next = t; /* timer上一个是t */
+			return;
+		}
+	}
+}
 
 
 /**

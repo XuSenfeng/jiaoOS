@@ -38,7 +38,7 @@ int fifo8_put(struct FIFO8 *fifo, char data)
 	fifo->free--;
 	if (fifo->task != 0) {
 		if (fifo->task->flags != 2) { /* 任务没有运行 */
-			task_run(fifo->task); /* 让任务运行起来 */
+			task_run(fifo->task, fifo->task->priority); /* 让任务运行起来 */
 			//printf("运行");
 		}
 	}

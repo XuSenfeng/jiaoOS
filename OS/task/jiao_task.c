@@ -292,49 +292,146 @@ void vTaskSwitchContext( void )
 }
 /********下面是任务优先级控制模块**********/
 
+
+//获取当前的任务
+struct TASK *task_now(void)
+{
+	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
+	return tl->tasks[tl->now];
+}
+
+/**
+  * @brief  添加一个任务到对应的优先级
+  * @param  设置的任务
+  * @retval 返回第一个任务的控制块
+  */
+void task_add(struct TASK *task)
+{
+	struct TASKLEVEL *tl = &taskctl->level[task->level];	//获取所在的任务等级
+	tl->tasks[tl->running] = task;							//添加任务
+	tl->running++;								//任务数量+1
+	task->flags = 2; /* 设置标志位 */
+	return;
+}
+
+/**
+  * @brief  讲一个任务设置为睡眠
+  * @param  设置的任务
+  * @retval 返回第一个任务的控制块
+  */
+void task_remove(struct TASK *task)
+{
+	int i;
+	struct TASKLEVEL *tl = &taskctl->level[task->level];
+
+	/* task位置寻找 */
+	for (i = 0; i < tl->running; i++) {
+		if (tl->tasks[i] == task) {
+			/* 找到之后 */
+			break;
+		}
+	}
+
+	tl->running--;
+	if (i < tl->now) {
+		tl->now--; /* 正在运行的任务前面 */
+	}
+	if (tl->now >= tl->running) {
+		/* now位置出现问题 */
+		tl->now = 0;
+	}
+	task->flags = 1; /* 设置任务标志 */
+
+	/* 移动位置 */
+	for (; i < tl->running; i++) {
+		tl->tasks[i] = tl->tasks[i + 1];
+	}
+
+	return;
+}
+
+/**
+  * @brief  寻找是否需要调换优先级,需要的话会直接进行更改
+  * @param  无
+  * @retval 返回第一个任务的控制块
+  */
+void task_switchsub(void)
+{
+	int i;
+	/* 获取有任务的最高优先级 */
+	for (i = 0; i < MAX_TASKLEVELS; i++) {
+		if (taskctl->level[i].running > 0) {
+			break; /* 找到了 */
+		}
+	}
+	
+	taskctl->now_lv = i;
+	taskctl->lv_change = 0;
+	return;
+}
+
 /**
   * @brief  初始化任务优先级控制模块, 同时初始化一个任务
   * @param  无
   * @retval 返回第一个任务的控制块
   */
 struct TASK *task_init(void)
-{
+{	
 	int i;
 	struct TASK *task;
-	//设置控制模块
 	taskctl = &task_memman;
-	//修改控制模块的所有任务的标志位
 	for (i = 0; i < MAX_TASKS; i++) {
+		//设置所有的任务初始化都是没有运行
 		taskctl->tasks0[i].flags = 0;
 	}
+	for (i = 0; i < MAX_TASKLEVELS; i++) {
+		//设置每一个优先级的
+		taskctl->level[i].running = 0;
+		taskctl->level[i].now = 0;
+	}
 	task = task_alloc();
-	task->flags = 2; /* 标志正在活动中 */
-	task->priority = 20;
-	taskctl->running = 0;
-	taskctl->now = 0;
-	taskctl->tasks[0] = task;
+	task->flags = 2;	/* 设置为使用中 */
+	task->priority = 20; /* 0.02秒 */
+	task->level = 0;	/* 设置优先级为最高 */
+	task_add(task);		//添加一个任务, 插入到对应优先级的对应位置
+	task_switchsub();	/* 根据优先级对控制模块进行修改 */
 	return task;
 }
 /**
-  * @brief  
+  * @brief  更换任务, 在中断的时候会进行调用
   * @param  无
   * @retval 返回一个任务结构体,失败的话返回0
   */
 void task_switch(void)
 {
+
+	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
+	struct TASK *new_task;
 	int next;
-	taskctl->now++;
-	next = taskctl->now + 1;
-	if (taskctl->now >= taskctl->running) {
-		taskctl->now = 0;
+	
+	tl->now++;
+	next = tl->now+1;
+	if (tl->now >= tl->running) {
+		tl->now = 0;
 	}
-	if (next >= taskctl->running) {
+	if (next >= tl->running) {
 		next = 0;
 	}
-	//timer_settime_without_change_irq(task_exchang_timer, taskctl->tasks[taskctl->now]->priority);
-	//printf("time = %d\n", taskctl->tasks[taskctl->now]->priority);
-	next_priority = taskctl->tasks[next]->priority;
-	pxCurrentTCB = taskctl->tasks[taskctl->now]->tss;
+	printf("firstruning = %d, now_lv = %d, %d\n", tl->running, taskctl->now_lv, tl->now);
+
+	if (taskctl->lv_change != 0) {
+		//需要更换优先级
+		task_switchsub();
+		tl = &taskctl->level[taskctl->now_lv];
+	}
+	//printf("runing = %d, now_lv = %d, %d\n", tl->running, taskctl->now_lv, tl->now);
+	new_task = tl->tasks[tl->now];
+	//timer_settime(task_timer, new_task->priority);
+	next_priority = tl->tasks[next]->priority;		//获取下次需要的时间
+	//在这里切换的时候实际上有可能获取到的任务在task_switchsub里面更改了
+	if (new_task->tss != pxCurrentTCB) {
+		pxCurrentTCB = new_task->tss;
+	}
 	return;
 }
 /**
@@ -360,61 +457,58 @@ struct TASK *task_alloc(void)
 }
 /**
   * @brief  把任务插在数组的最后面
-  * @param  无
+  * @param  要运行的任务
+  * @param  任务的优先级
+  * @param  任务运行的时间
   * @retval 返回一个任务结构体,失败的话返回0
   */
-void task_run(struct TASK *task, int priority)
+void task_run(struct TASK *task, int level, int priority)
 {
+
+
 	__disable_irq();
-	if (priority > 0) {
-		task->priority = priority;
+	if (level < 0) {
+		level = task->level; /* 设置优先级等级 */
 	}
-	task->flags = 2; /* 运行中 */
-	taskctl->tasks[taskctl->running] = task;
-	taskctl->running++;
+	if (priority > 0) {
+		task->priority = priority;	//设置运行时间
+	}
+
+	if (task->flags == 2 && task->level != level) { /* 改变活动中的任务的等级*/
+		task_remove(task); /* 先把任务移除 */
+	}
+	if (task->flags != 2) {
+		/* 从休眠状态唤醒 */
+		task->level = level;
+		task_add(task);
+	}
+	taskctl->lv_change = 1; /* 下一次切换任务的时候检查等级 */
 	__enable_irq();
+
 	return;
 }
 /**
   * @brief  把一个任务设置为睡眠状态
-  * @param  无
+  * @param  睡眠的任务
   * @retval 返回一个任务结构体,失败的话返回0
   */
 void task_sleep(struct TASK *task)
 {
-	int i;
-	char ts = 0;
-	if (task->flags == 2) {		/* 指定的任务正在运行 */
-		if (task == taskctl->tasks[taskctl->now]) {
-			ts = 1; /* 这是正在运行的任务 */
-		}
-		/* 找到当前运行的任务在列表中的位置 */
-		for (i = 0; i < taskctl->running; i++) {
-			if (taskctl->tasks[i] == task) {
-				/* 找到了 */
-				break;
-			}
-		}
-		taskctl->running--;
-		if (i < taskctl->now) {
-			//这个任务在当前的任务之前
-			taskctl->now--; /* 当前运行的任务的位置减少一个*/
-		}
-		/* 重新排序 */
-		for (; i < taskctl->running; i++) {
-			taskctl->tasks[i] = taskctl->tasks[i + 1];
-		}
-		task->flags = 1; /* 任务的状态 */
-		if (ts != 0) {
-			/* 当前的任务在运行 */
-			if (taskctl->now >= taskctl->running) {
-				/* now出现异常进行修复 */
-				taskctl->now = 0;
-				taskYIELD();
-			}			
+
+	struct TASK *now_task;
+	if (task->flags == 2) {
+		/* 获取运行中的任务 */
+		now_task = task_now();
+		task_remove(task); /* 把当前的任务从列表中删除 */
+		if (task == now_task) {
+			/* 当前的任务是在运行的任务 */
+			task_switchsub();
+			taskYIELD();
 		}
 	}
 	return;
+
+
 }
 /*
 *************************************************************************
@@ -464,6 +558,7 @@ void vPortExitCritical( void )
   */
 void Task_main(void)
 {
+
 	//获取两个任务的结构体指针
 	task1 = task_init();
 	task2 = task_alloc();
@@ -482,9 +577,11 @@ void Task_main(void)
 						&Task2TCB);
 
 	//申请一个任务, 任务设置为运行状态
-	task_run(task1, 20);
-	task_run(task2, 10);
+	task_run(task1, 0, 20);
+	task_run(task2, 1, 10);
+	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
 
+	printf("runing = %d, now_lv = %d, %d\n", tl->running, taskctl->now_lv, tl->now);
 	//开启任务的调度
 	vTaskStartScheduler();
 }

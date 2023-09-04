@@ -16,8 +16,8 @@
 #define portINITIAL_XPSR			        ( 0x01000000 )
 #define portSTART_ADDRESS_MASK				( ( StackType_t ) 0xfffffffeUL )
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 	191   /* 高四位有效，即等于0xb0，或者是11 */
-
-
+#define MAX_TASKS_LV					5
+#define MAX_TASKLEVELS					5
 
 
 //任务控制器,单个任务控制使用,保存任务初始化需要的信息
@@ -34,14 +34,20 @@ typedef struct tskTaskControlBlock
 struct TASK {
 	int flags;			//记录当前任务的状态,用于任务的申请,为1表示申请了没有运行,2表示运行中
 	tskTCB * tss;		//这一点记录任务的控制块
-	int priority;
+	int priority, level;
+};
+//一个任务运行的等级
+struct TASKLEVEL {
+	int running; /* 正在运行的任务的数量数量 */
+	int now; /* 记录当前正在运行的任务 */
+	struct TASK *tasks[MAX_TASKS_LV];
 };
 
 //任务的控制模块
 struct TASKCTL {
-	int running; /* 正在运行的任务的数量 */
-	int now; /* 现在运行的任务 */
-	struct TASK *tasks[MAX_TASKS];
+	int now_lv; /* 现在活动中的LEVEL */
+	char lv_change; /* 下次切换的时候是否需要切换LEVEL */
+	struct TASKLEVEL level[MAX_TASKLEVELS];
 	struct TASK tasks0[MAX_TASKS];
 };
 
@@ -110,7 +116,7 @@ void vTaskSwitchContext( void );
 struct TASK *task_alloc(void);
 void task_switch(void);
 void task_sleep(struct TASK *task);
-void task_run(struct TASK *task, int priority);
+void task_run(struct TASK *task, int level, int priority);
 
 
 /* 临界区管理 */

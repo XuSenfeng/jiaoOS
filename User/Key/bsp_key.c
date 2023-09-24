@@ -97,22 +97,22 @@ void Key_TouchEventHandler(int i)
 		if(i==KEY1_DOWN)
 		{
 			//KAY1按下,在这里设置处理
-			
-			printf("Key1 down\n");
-			if((Mouse_def.x>=Windoes_sht->vx0+Windoes_sht->bxsize-18) &
-				(Mouse_def.x<=Windoes_sht->vx0+Windoes_sht->bxsize) &
-				(Mouse_def.y>=Windoes_sht->vy0) &
-				(Mouse_def.y<=Windoes_sht->vy0+18))
-			{
-				printf("图层操作\n");
-				sheet_updown(&ctl, Windoes_sht, -1);
-			}
+			sheet_event_check_run(Mouse_def.x, Mouse_def.y);
+			//printf("Key1 down\n");
+//			if((Mouse_def.x>=Windoes_sht->vx0+Windoes_sht->bxsize-18) &
+//				(Mouse_def.x<=Windoes_sht->vx0+Windoes_sht->bxsize) &
+//				(Mouse_def.y>=Windoes_sht->vy0) &
+//				(Mouse_def.y<=Windoes_sht->vy0+18))
+//			{
+//				printf("图层操作\n");
+//				sheet_updown(&ctl, Windoes_sht, -1);
+//			}
 		}
 		if(i==KEY1_UP)
 		{
 			//KAY1抬起,在这里设置处理
 
-			printf("Key1 up\n");
+			//printf("Key1 up\n");
 		}
 		if(i==KEY2_DOWN)
 		{	
@@ -120,22 +120,24 @@ void Key_TouchEventHandler(int i)
 			if(Windoes_sht->height==-1)
 			{
 				//这时候的窗口被隐藏
+				Windoes_sht->vx0 = Mouse_def.x;
+				Windoes_sht->vy0 = Mouse_def.y;
 				sheet_updown(&ctl, Windoes_sht, 1);
 				//设置鼠标为最高层的图层
-				printf("设置窗口");
+				//printf("设置窗口");
 				sheet_updown(&ctl, Mouse_sht, MAX_SHEETS);
-				printf("%d", Mouse_sht->height);
+				//printf("%d", Mouse_sht->height);
 			}else
 			{
 				sheet_slide(Windoes_sht, Mouse_def.x, Mouse_def.y);
 			}
-			printf("Key2 down\n");
+			//printf("Key2 down\n");
 		}
 		if(i==KEY2_UP)
 		{
 			//KAY2抬起,在这里设置处理
 
-			printf("Key2 up\n");
+			//printf("Key2 up\n");
 		}				
 	
 	

@@ -3,7 +3,7 @@
 
 #define SHEET_USE		1
 //图层控制结构体
-struct SHEET * Mouse_sht, * Windoes_sht;
+struct SHEET * Mouse_sht, * Windoes_sht, *Dasktop_sht;
 //extern Mouse_Message_Def Mouse_def;
 extern uint8_t buf_win[120*52];
 //图层控制模块
@@ -22,6 +22,7 @@ void shtctl_init(int xsize, int ysize)
 	ctl.top = -1; /* 没有使用的图层 */
 	for (i = 0; i < MAX_SHEETS; i++) {
 		ctl.sheets0[i].flags = 0; /* 所有的图层标记为未使用 */
+		ctl.sheets0[i].event = NULL;		//初始化所有的事件为空
 	}
 
 }
@@ -83,13 +84,14 @@ void sheet_refreshsub(int vx0, int vy0, int vx1, int vy1)
 	//设置一个临时的图层
 	width =vx1-vx0;
 	high = vy1-vy0;
+	//这是一个要刷新的图层比较大的时候要进行的处理
 	if((width*high) > (16*16+1))
 	{
-		printf("图层过大\n\n");
+		//printf("图层过大\n\n");
 		width_x = width/16+1;
 		high_x = high/16+1;
 
-		printf("width_x = %d, high_x = %d\n", width_x, high_x);
+		//printf("width_x = %d, high_x = %d\n", width_x, high_x);
 		
 		for(i=0;i<high_x;i++){
 			for(j=0;j<width_x;j++)
@@ -186,7 +188,7 @@ void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height)
 	} else if (old < height) {	/* 比之前的图层高 */
 		if (old >= 0) {
 			/* 之前的图层已经显示了 */
-			printf("\n%d %d\n", old, height);
+			//printf("\n%d %d\n", old, height);
 
 			for (h = old; h < height; h++) {
 				ctl->sheets[h] = ctl->sheets[h + 1];
@@ -259,6 +261,138 @@ void sheet_free(struct SHTCTL *ctl, struct SHEET *sht)
 	sht->flags = 0; /* 未使用 */
 	return;
 }
+
+/***********************************处理图层事件********************************************/
+/**
+  * @brief  获取按键所在位置显示的图层
+  * @param  指针的绝对坐标
+  * @retval 所在位置的图层的高度
+  */
+int Get_Top_Sheet(uint16_t vx0, uint16_t vy0)
+{
+	struct SHEET *sht;
+	int bx0, by0, h, heigh=0;
+	uint8_t  *buf, c;
+	
+	for (h = 0; h <= ctl.top-1; h++) {
+		//遍历所有的图层
+		sht = ctl.sheets[h];
+		//获得图层信息
+		buf = sht->buf;
+		/* 获取临时图层更新位置相对于图层的位置 */
+		bx0 = vx0 - sht->vx0;
+		by0 = vy0 - sht->vy0;
+		//printf("bx0 = %d %d", bx0, vx0);
+		//算出来相对位置是负数的时候会出现问题
+		if (bx0 < 0) { continue;}
+		if (by0 < 0) { continue;}
+		if (bx0 > sht->bxsize) { continue; }
+		if (by0 > sht->bysize) { continue; }
+		//首先是临时图层在左边
+
+		//临时图层在左上角
+		//获取对应位置的颜色
+		c = table_rgb565[buf[by0 * sht->bxsize + bx0]];
+		if (c != sht->col_inv) {
+			heigh = h;
+		}
+		
+	}
+	return heigh;
+
+}
+/**
+  * @brief  给某一个图层添加一个事件,会加载所有事件最后
+  * @param  创建事件的图层
+  * @param  要添加的事件
+  * @param  事件产生时候触发的范围
+  * @param  事件产生之后会调用的处理函数
+  * @retval 无
+  */
+void sheet_add_event(struct SHEET *sht, struct SHEET_Event *event, 
+					uint16_t x0, uint16_t y0,
+					uint16_t x1, uint16_t y1,
+					EventFunction_t func)
+{
+	struct SHEET_Event * now_event;
+	//初始化事件
+	event->x0 = x0;
+	event->x1 = x1;
+	event->y0 = y0;
+	event->y1 = y1;
+	event->event_function = func;
+	
+	now_event = sht->event;
+	//这个是这一个图层初始的时候没有事件
+	if(now_event == NULL)
+	{
+		sht->event = event;
+		return;
+	}
+	
+	while(now_event->next_event != NULL)
+	{
+		now_event = now_event->next_event;
+	}
+	now_event->next_event = event;
+}
+/**
+  * @brief  从某一个图层里面删除某一个事件
+  * @param  创建事件的图层
+  * @param  要删除的事件
+  * @retval 无
+  */
+void sheet_event_del(struct SHEET *sht, struct SHEET_Event *event){
+	struct SHEET_Event * now_event;
+	now_event = sht->event;
+	if(now_event == event)
+	{
+		sht->event = now_event->next_event;
+		return;
+	}
+	//不是第一个事件的时候
+	while(now_event->next_event!=NULL)
+	{
+		//还没有到最后一个事件
+		if(now_event->next_event == event)
+		{
+			now_event->next_event = now_event->next_event->next_event;
+		}
+	}
+}
+/**
+  * @brief  检测某一个位置的事件并进行处理
+  * @param  要检测的位置
+  * @retval 所在位置的图层的高度
+  */
+void sheet_event_check_run(uint16_t x, uint16_t y)
+{
+	int h, bx0, by0;
+	struct SHEET *sht;
+	struct SHEET_Event * now_event;
+
+	h = Get_Top_Sheet(x, y);
+	sht = ctl.sheets[h];
+	//计算图层的相对位置
+	bx0 = x - sht->vx0;
+	by0 = y - sht->vy0;
+
+	now_event = sht->event;
+	while(now_event != NULL){		
+		if(bx0>=now_event->x0 && bx0<now_event->x1 && by0>=now_event->y0 && by0<now_event->y1)
+		{
+			//事件成立
+			now_event->event_function();
+		}
+		//获取下一个事件
+		now_event = now_event->next_event;
+	}
+}
+
+
+
+
+
 
 
 

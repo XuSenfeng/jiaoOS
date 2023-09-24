@@ -361,7 +361,6 @@ void  TIME_TIM_IRQHandler (void)
 		TIM_ClearITPendingBit(TIME_TIM , TIM_FLAG_Update); 
 		if(exchange_flog){
 			//设置下一次切换的时间
-			printf("next = %d\n", next_priority);
 			timer_settime(task_exchang_timer, next_priority);
 			taskYIELD();
 		}

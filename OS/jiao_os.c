@@ -3,7 +3,45 @@ extern Mouse_Message_Def Mouse_def;
 extern struct SHTCTL ctl;
 
 struct Event_Flog EventFlog;
-extern struct SHEET * Mouse_sht, * Windoes_sht;
+extern struct SHEET * Mouse_sht, * Windoes_sht, *Dasktop_sht;
+
+
+
+struct SHEET_Event event1, event2, event3;
+void event1_function()
+{
+	printf("event1\n");
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR , ENABLE);
+	if(PWR_GetFlagStatus(PWR_FLAG_WU) == SET)
+	{
+		LED_BLUE;
+		printf("\r\n 待机唤醒复位 \r\n");
+	}
+	else
+	{
+		LED_GREEN;
+		printf("\r\n 非待机唤醒复位 \r\n");
+	}
+	LED_RED;	
+
+	/*清除WU状态位*/
+	PWR_ClearFlag (PWR_FLAG_WU);
+	
+	/* 使能WKUP引脚的唤醒功能 ，使能PA0*/
+	PWR_WakeUpPinCmd (ENABLE);
+	
+	/* 进入待机模式 */
+	PWR_EnterSTANDBYMode();
+}
+void event2_function()
+{
+	printf("event2\n");
+}
+void event3_function()
+{
+	printf("event3\n");
+	sheet_updown(&ctl, Windoes_sht, -1);
+}
 //这个是保存窗口图层信息的数组
 uint8_t buf_win[120*60];
 
@@ -18,10 +56,13 @@ void sheet_init(void)
 
 	//初始化管理的结构体
 	shtctl_init(ILI9341_MORE_PIXEL, ILI9341_LESS_PIXEL);
-	//申请鼠标结构体
+	//申请鼠标和一个桌面结构体, 桌面结构体实际上没有进行实际的初始化,只是用来在之后的时间检测的时候使用
+	Dasktop_sht = sheet_alloc(&ctl);
 	Mouse_sht = sheet_alloc(&ctl);
 	//设置鼠标图层
 	sheet_setbuf(Mouse_sht, Mouse_def.mouse, Mouse_def.Width, Mouse_def.High, 	0x9999);
+	sheet_setbuf(Dasktop_sht, NULL, 0, 0, 0);
+
 	//初始化鼠标的颜色
 	Mouse_sht->vx0 = 120;
 	Mouse_sht->vy0 = 160;
@@ -39,10 +80,20 @@ void sheet_init(void)
 	make_textbox8(buf_win, 120, 8, 28, 104, 16, COL8_FFFFFF);
 	//在文本框里面设置文字进行
 	putfonts8_asc(buf_win, 120, 8, 28, COL8_008484, "测试");
+	//在这时候没有桌面
 	//设置这个图层比较低
+	sheet_updown(&ctl, Dasktop_sht, 0);
+
 	sheet_updown(&ctl, Windoes_sht, 1);
 	//设置鼠标为最高层的图层
 	sheet_updown(&ctl, Mouse_sht, MAX_SHEETS);
+	/*********************/
+	/******创建事件*******/
+	/*********************/
+	sheet_add_event(Dasktop_sht, &event1, 0, 210, 60, 240, event1_function);
+	sheet_add_event(Windoes_sht, &event2, 0, 0, 120, 90, event2_function);
+	sheet_add_event(Windoes_sht, &event3, 100, 0, 120, 20, event3_function);
+
 }
 
 /**

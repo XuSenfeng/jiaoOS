@@ -899,7 +899,7 @@ void XPT2046_TouchEvenHandler(int i)
 	
 		if(i==1)
 		{
-			//LED_GREEN;
+			LED_GREEN;
 			
 			//获取触摸坐标
 			XPT2046_Get_TouchedPoint(&cinfo,strXPT2046_TouchPara);
@@ -909,6 +909,7 @@ void XPT2046_TouchEvenHandler(int i)
 #if 	USE_OF_MOUSE		
 			Draw_Mouse(cinfo.x, cinfo.y);
 #endif
+			//printf("sheet = %d\n", Get_Top_Sheet(cinfo.x, cinfo.y));
 			//调用触摸被按下时的处理函数，可在该函数编写自己的触摸按下处理过程
 			XPT2046_TouchDown(&cinfo);
 			

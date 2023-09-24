@@ -6,9 +6,20 @@
 #include "jiao_dasktop.h"
 #include <stdlib.h>
 #include <stdio.h>
+
+struct SHEET_Event{
+	//记录事件的位置,这个是图层里面的相对的位置
+	uint16_t x0, y0, x1, y1;
+	//这个是时间到达的时候要处理的函数
+	void *event_function;
+	//这是一个指针指向下一个事件
+	struct SHEET_Event *next_event;
+};
+
 struct SHEET {
 	uint8_t *buf;
 	int bxsize, bysize, vx0, vy0, col_inv, height, flags;
+	struct SHEET_Event *event;
 	
 };
 struct SHTCTL {

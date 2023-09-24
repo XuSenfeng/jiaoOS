@@ -96,8 +96,9 @@ typedef long BaseType_t;
 #define pdFALSE			( ( BaseType_t ) 0 )
 #define pdTRUE			( ( BaseType_t ) 1 )
 
-StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters );
 
+StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters );
+//申请一个静态的任务
 TaskHandle_t xTaskCreateStatic(	TaskFunction_t pxTaskCode,           /* 任务入口 */
 					            const char * const pcName,           /* 任务名称，字符串形式 */
 					            const uint32_t ulStackDepth,         /* 任务栈大小，单位为字 */

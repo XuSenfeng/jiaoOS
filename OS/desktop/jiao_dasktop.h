@@ -41,5 +41,6 @@ void boxfill_buf(uint16_t *buf, int x0, int y0, int width, int height);
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act);
 void make_textbox8(uint8_t *buf, int xsize, int x0, int y0, int sx, int sy, int c);
 void putfonts8_asc(uint8_t * buf,int xsize,uint16_t x,uint16_t y, uint16_t color,char * title);
+void make_wtitle8(unsigned char *buf, int xsize, char *title, char act);
 
 #endif

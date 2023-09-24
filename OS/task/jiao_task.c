@@ -10,10 +10,15 @@ uint32_t Task1Stack[TASK1_STACK_SIZE];
 
 #define TASK2_STACK_SIZE                    80
 uint32_t Task2Stack[TASK2_STACK_SIZE];
+
+#define SENTRY_STACK_SIZE                    80
+uint32_t SENTRYStack[SENTRY_STACK_SIZE];
 //任务控制块
 TCB_t Task1TCB;
 TCB_t Task2TCB;
-//初始化的两个时钟
+TCB_t SentryTCB;
+
+//初始化的两个时钟,第一个时钟用于控制任务的切换
 extern struct TIMER * task_exchang_timer, *timer2;
 //标志位的结构体
 extern struct Event_Flog EventFlog;
@@ -31,8 +36,6 @@ void delay (uint32_t count)
 {
 	for(; count!=0; count--);
 }
-/* 任务1 */
-uint8_t flag1;
 /**
   * @brief  任务一的测试函数
   * @param  无
@@ -68,7 +71,6 @@ void Task1_Entry( void *p_arg )
 
 	}
 }
-uint8_t flag2;
 
 /**
   * @brief  任务二的测试函数
@@ -82,9 +84,25 @@ void Task2_Entry( void *p_arg )
 	{	
 		printf("task2\n");
 		delay(0x2fffff);
-		LED2_TOGGLE;
+		//LED2_TOGGLE;
 	}
 }
+/**
+  * @brief  卫兵任务
+  * @param  无
+  * @retval None
+  */
+void task_idle(void *p_arg)
+{
+	for (;;) {
+		__WFI();	//WFI指令进入睡眠,减少功耗
+	}
+}
+
+
+
+/*******************************以下是任务切换使用的函数*************************************/
+
 /**
   * @brief  这个函数是出问题,任务退出的时候才会进入,正常情况下不会进入,任务函数的返回函数记录的是这一个函数
   * @param  无
@@ -93,7 +111,8 @@ void Task2_Entry( void *p_arg )
 static void prvTaskExitError( void )
 {
     /* 函数停止在这里 */
-    for(;;);
+    for(;;)
+		__WFI();
 }
 
 
@@ -290,7 +309,7 @@ void vTaskSwitchContext( void )
     /* 两个任务轮流切换 */
 	task_switch();
 }
-/********下面是任务优先级控制模块**********/
+/******************************下面是任务优先级控制模块*********************************/
 
 
 //获取当前的任务
@@ -316,6 +335,7 @@ void task_add(struct TASK *task)
 
 /**
   * @brief  讲一个任务设置为睡眠
+			这个只会遍历任务所在优先级,之后对那个优先级进行重新设置
   * @param  设置的任务
   * @retval 返回第一个任务的控制块
   */
@@ -378,7 +398,7 @@ void task_switchsub(void)
 struct TASK *task_init(void)
 {	
 	int i;
-	struct TASK *task;
+	struct TASK *task, *idea;	//初始化两个任务,一个卫兵,一个是主函数
 	taskctl = &task_memman;
 	for (i = 0; i < MAX_TASKS; i++) {
 		//设置所有的任务初始化都是没有运行
@@ -391,10 +411,20 @@ struct TASK *task_init(void)
 	}
 	task = task_alloc();
 	task->flags = 2;	/* 设置为使用中 */
-	task->priority = 20; /* 0.02秒 */
+	task->priority = 20; /* 设置任务运行的时间 */
 	task->level = 0;	/* 设置优先级为最高 */
 	task_add(task);		//添加一个任务, 插入到对应优先级的对应位置
 	task_switchsub();	/* 根据优先级对控制模块进行修改 */
+	
+	//哨兵
+	idea = task_alloc();
+	idea->tss = xTaskCreateStatic(task_idle, 
+					"Sentry", 
+					SENTRY_STACK_SIZE, 
+					NULL, 
+					SENTRYStack,
+					&SentryTCB);
+	task_run(idea, MAX_TASKLEVELS-1, 1);
 	return task;
 }
 /**
@@ -417,16 +447,13 @@ void task_switch(void)
 	if (next >= tl->running) {
 		next = 0;
 	}
-	printf("firstruning = %d, now_lv = %d, %d\n", tl->running, taskctl->now_lv, tl->now);
 
 	if (taskctl->lv_change != 0) {
 		//需要更换优先级
 		task_switchsub();
 		tl = &taskctl->level[taskctl->now_lv];
 	}
-	//printf("runing = %d, now_lv = %d, %d\n", tl->running, taskctl->now_lv, tl->now);
 	new_task = tl->tasks[tl->now];
-	//timer_settime(task_timer, new_task->priority);
 	next_priority = tl->tasks[next]->priority;		//获取下次需要的时间
 	//在这里切换的时候实际上有可能获取到的任务在task_switchsub里面更改了
 	if (new_task->tss != pxCurrentTCB) {
@@ -502,7 +529,7 @@ void task_sleep(struct TASK *task)
 		task_remove(task); /* 把当前的任务从列表中删除 */
 		if (task == now_task) {
 			/* 当前的任务是在运行的任务 */
-			task_switchsub();
+			task_switchsub();//重新设置任务的运行等级
 			taskYIELD();
 		}
 	}
@@ -579,9 +606,7 @@ void Task_main(void)
 	//申请一个任务, 任务设置为运行状态
 	task_run(task1, 0, 20);
 	task_run(task2, 1, 10);
-	struct TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
 
-	printf("runing = %d, now_lv = %d, %d\n", tl->running, taskctl->now_lv, tl->now);
 	//开启任务的调度
 	vTaskStartScheduler();
 }

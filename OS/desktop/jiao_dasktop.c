@@ -302,6 +302,28 @@ void putfonts8_asc(uint8_t * buf,int xsize,uint16_t x,uint16_t y, uint16_t color
   */
 void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char act)
 {
+	buf_fill8(buf, xsize, COL8_C6C6C6, 0,         0,         xsize - 1, 0        );
+	buf_fill8(buf, xsize, COL8_FFFFFF, 1,         1,         xsize - 2, 1        );
+	buf_fill8(buf, xsize, COL8_C6C6C6, 0,         0,         0,         ysize - 1);
+	buf_fill8(buf, xsize, COL8_FFFFFF, 1,         1,         1,         ysize - 2);
+	buf_fill8(buf, xsize, COL8_848484, xsize - 2, 1,         xsize - 2, ysize - 2);
+	buf_fill8(buf, xsize, COL8_000000, xsize - 1, 0,         xsize - 1, ysize - 1);
+	buf_fill8(buf, xsize, COL8_C6C6C6, 2,         2,         xsize - 3, ysize - 3);
+	buf_fill8(buf, xsize, COL8_848484, 1,         ysize - 2, xsize - 2, ysize - 2);
+	buf_fill8(buf, xsize, COL8_000000, 0,         ysize - 1, xsize - 1, ysize - 1);
+	make_wtitle8(buf, xsize, title, act);
+	return;
+}
+/**
+  * @brief  绘制一个窗口头部
+  * @param  图层的buf
+  * @param  图层的宽度
+  * @param  窗口显示的文字
+  * @param  显示的窗口类型,是运行中1,还是后台0
+  * @retval None
+  */
+void make_wtitle8(unsigned char *buf, int xsize, char *title, char act)
+{
 	static char closebtn[14][16] = {
 		"OOOOOOOOOOOOOOO@",
 		"OQQQQQQQQQQQQQ$@",
@@ -327,16 +349,7 @@ void make_window8(unsigned char *buf, int xsize, int ysize, char *title, char ac
 		tc = COL8_C6C6C6;
 		tbc = COL8_848484;
 	}
-	buf_fill8(buf, xsize, COL8_C6C6C6, 0,         0,         xsize - 1, 0        );
-	buf_fill8(buf, xsize, COL8_FFFFFF, 1,         1,         xsize - 2, 1        );
-	buf_fill8(buf, xsize, COL8_C6C6C6, 0,         0,         0,         ysize - 1);
-	buf_fill8(buf, xsize, COL8_FFFFFF, 1,         1,         1,         ysize - 2);
-	buf_fill8(buf, xsize, COL8_848484, xsize - 2, 1,         xsize - 2, ysize - 2);
-	buf_fill8(buf, xsize, COL8_000000, xsize - 1, 0,         xsize - 1, ysize - 1);
-	buf_fill8(buf, xsize, COL8_C6C6C6, 2,         2,         xsize - 3, ysize - 3);
-	buf_fill8(buf, xsize, tbc,         3,         3,         xsize - 4, 20       );
-	buf_fill8(buf, xsize, COL8_848484, 1,         ysize - 2, xsize - 2, ysize - 2);
-	buf_fill8(buf, xsize, COL8_000000, 0,         ysize - 1, xsize - 1, ysize - 1);
+	buf_fill8(buf, xsize, tbc, 3, 3, xsize - 4, 20);
 	putfonts8_asc(buf, xsize, 4, 4, tc, title);
 	for (y = 0; y < 14; y++) {
 		for (x = 0; x < 16; x++) {

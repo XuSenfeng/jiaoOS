@@ -83,8 +83,8 @@ void Task2_Entry( void *p_arg )
 	for( ;; )
 	{	
 		printf("task2\n");
-		delay(0x8fffff);
-		//LED2_TOGGLE;
+		delay(0x4fffff);
+		LED2_TOGGLE;
 	}
 }
 /**

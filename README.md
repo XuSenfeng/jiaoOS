@@ -6,6 +6,8 @@
 
 [[开源\]基于野火指南者开发板，轻松构建图形化系统！_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1Ep4y1N7UC/?spm_id_from=333.999.0.0&vd_source=3771cc8df803eed7244034a762706c24)
 
+
+
 ## 作品简介
 
 记录手写stm32相关操作系统, 主要使野火指南者开发板, 参考30天自制操作系统以及FreeRTOS, 文件使用固件库开发
@@ -43,8 +45,6 @@
 
 模式的选择参照文件jiaoConfig.h
 
-目前不支持任务按照优先级进行切换, 会在之后进行更新
-
 ### 使用方法
 
 参见jiao_task.c的Task_main函数
@@ -81,6 +81,18 @@ void Task_main(void)
 }
 ```
 
+### 实现方法
+
+使用结构体TASKCTL进行任务的控制, 这里面保存有所有运行中的任务, 默认设置最多为5个任务(TASK结构体), 可以修改宏定义进行增加, 还有一个TASKLEVEL数组, 这一个数组是用来进行任务优先级设置的, 数组里面包含一个任务指针数组, 用来控制任务的优先级
+
+任务控制块为结构体TASK, 里面使用tskTaskControlBlock进行控制任务的状态, 这里面记录有任务的栈指针以及任务的名字, 目前支持使用函数xTaskCreateStatic进行任务的状态初始化, 函数的参数以及具体实现在jiao_task.c文件中, TASK结构体里面还保存有任务的优先级, 以及任务每一次切换的时候间隔的时间, 在进行任务的添加的时候进行设置
+
+任务的栈设置需要用户根据实际的使用进行初始化, 使用一个数组作为栈
+
+使用的是taskYIELD();函数触发PendSV中断, 这个中断设置为最低优先级, 在中断中会进行任务状态的保存,在处理完其他的中断以后会进行切换, 目前使用的是时钟中断进行任务的切换, 任务的在初始化的时候与任务切换时钟进行挂载, 时钟定时到达的时候会进行切换, 切换时候自动设置时间为下一个任务的时间设置
+
+当存在高优先级任务的时候会对低优先级的任务进行屏蔽, 所以在高优先级的任务执行完毕以后使用			`task_sleep(task1);`进行任务的休眠
+
 ### 默认程序
 
 初始化两个任务
@@ -90,15 +102,73 @@ void Task_main(void)
 
 ## 图形化界面
 
-首先绘制图形, 之后将桌面的的图像保存在Flash里面(芯片本身内部SRAM的大小的限制), 在保存之后会用于其他图层的绘制, 其他的图层保存在数组中, 使用画板的方式, 用8bit的画板在绘制的时候转化为16位的数据, 从而减少空间的使用, 之后更新图层的buf之后刷新图层即可完成画面的显示
+图层使用结构体SHTCTL进行管理, 每一个涂层的信息保存在SHEET结构体里面, 保存有图层的位置, 图层的颜色信息以及图层的事件等, 默认使用最多的图层为5层, 可以修改宏定义进行修改
 
-图层可以使用透明色, 之后的绘制的时候会显示下面的图层
+首先绘制图形, 之后将桌面的的图像保存在Flash里面(芯片本身内部SRAM的大小的限制), 在保存之后会用于其他图层的绘制, 其他的图层保存在数组中, 使用画板的方式, 用8bit的画板在绘制的时候转化为16位的数据, 从而减少空间的使用, 之后更新图层的buf之后刷新图层即可完成画面的显示, 之后在申请的时候申请一个图层大小为0设置为最底层进行图层的任务检测
 
-图层的相关操作有图层的上下移动, 图层的位置移动等
+图层可以使用透明色col_inv, 之后的绘制的时候会显示下面的图层, 具体使用为鼠标的部分位置显示下面的图层
+
+图层的相关操作有图层的上下移动, 图层的位置移动等, 使用`sheet_slide`函数, 实现鼠标的移动使用的就是这一个函数
 
 其他还设置了从屏幕获取颜色信息, 从Flash获取颜色信息的函数, 具体的介绍参照工程中的注释
 
-在打印的时候支持中文, 现在完成窗口, 文本框的数组初始化工作, 字模使用Flash里面存储的字模(野火烧录的字模程序)
+在打印的时候支持中文, 现在完成窗口make_textbox8, 文本框的数组初始化工作putfonts8_asc, 字模使用Flash里面存储的字模(野火烧录的字模程序)
+
+```c
+/**
+  * @brief  这个是操作系统初始化时候调用的函数
+  * @param  None
+  * @retval None
+  */
+void sheet_init(void)
+{
+
+	//初始化管理的结构体
+	shtctl_init(ILI9341_MORE_PIXEL, ILI9341_LESS_PIXEL);
+	//申请鼠标和一个桌面结构体, 桌面结构体实际上没有进行实际的初始化,只是用来在之后的时间检测的时候使用
+	Dasktop_sht = sheet_alloc(&ctl);
+	Mouse_sht = sheet_alloc(&ctl);
+	//设置鼠标图层
+	sheet_setbuf(Mouse_sht, Mouse_def.mouse, Mouse_def.Width, Mouse_def.High, 	0x9999);
+    //初始化鼠标的图层
+	sheet_setbuf(Dasktop_sht, NULL, 0, 0, 0);
+
+	//初始化鼠标的颜色
+	Mouse_sht->vx0 = 120;
+	Mouse_sht->vy0 = 160;
+	//申请一个窗口图层
+	Windoes_sht = sheet_alloc(&ctl);
+	if(Windoes_sht==0)
+	{
+		printf("窗口图层申请失败");
+	}
+	sheet_setbuf(Windoes_sht, buf_win, 120, 60, 0x9999);
+	//设置窗口的位置
+	Windoes_sht->vx0 = 20;
+	Windoes_sht->vy0 = 20;
+	//绘制文本框
+	make_textbox8(buf_win, 120, 8, 28, 104, 16, COL8_FFFFFF);
+	//在文本框里面设置文字进行
+	putfonts8_asc(buf_win, 120, 8, 28, COL8_008484, "测试");
+	//在这时候没有桌面
+	//设置这个图层比较低
+	sheet_updown(&ctl, Dasktop_sht, 0);
+	sheet_updown(&ctl, Windoes_sht, 1);
+	//设置鼠标为最高层的图层
+	sheet_updown(&ctl, Mouse_sht, MAX_SHEETS);
+	/*********************/
+	/******创建事件*******/
+	/*********************/
+	sheet_add_event(Dasktop_sht, &event1, 0, 210, 60, 240, event1_function);
+	sheet_add_event(Windoes_sht, &event2, 0, 0, 120, 90, event2_function);
+	sheet_add_event(Windoes_sht, &event3, 100, 0, 120, 20, event3_function);
+
+}
+```
+
+### 图层事件
+
+
 
 ## 触摸屏
 

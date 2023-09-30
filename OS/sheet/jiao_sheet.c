@@ -366,7 +366,7 @@ void sheet_event_del(struct SHEET *sht, struct SHEET_Event *event){
 /**
   * @brief  检测某一个位置的事件并进行处理
   * @param  要检测的位置
-  * @retval 所在位置的图层的高度
+  * @retval 无
   */
 void sheet_event_check_run(uint16_t x, uint16_t y)
 {
